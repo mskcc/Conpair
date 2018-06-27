@@ -14,10 +14,19 @@ import os
 import optparse
 import math
 from collections import defaultdict
+
+# These modules should be in a folder under the parent of the folder containing this script
+module_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'modules')
+# If found, add that to the PYTHONPATH, else we depend on user to define PYTHONPATH
+if os.path.isdir(module_dir):
+    sys.path.append(module_dir)
 from ContaminationModel import *
 from ContaminationMarker import *
 
-CONPAIR_DIR = os.environ['CONPAIR_DIR']
+if 'CONPAIR_DIR' in os.environ:
+    CONPAIR_DIR = os.environ['CONPAIR_DIR']
+else:
+    CONPAIR_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 MARKER_FILE = os.path.join(CONPAIR_DIR, 'data', 'markers', 'GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.txt')
 
 desc = """Program to verify tumor-normal sample concordance"""

@@ -16,7 +16,6 @@ import optparse
 from shutil import move
 from tempfile import NamedTemporaryFile
 
-
 desc = """Program to run GATK Pileup on a single sample"""
 parser = optparse.OptionParser(version='%prog version 1.0 21/March/2016', description=desc)
 parser.add_option('-B', '--bam', help='BAMFILE [mandatory field]', action='store')
@@ -43,8 +42,10 @@ if not os.path.exists(opts.bam):
 
 if opts.conpair_dir:
     CONPAIR_DIR = opts.conpair_dir
-else:
+elif 'CONPAIR_DIR' in os.environ:
     CONPAIR_DIR = os.environ['CONPAIR_DIR']
+else:
+    CONPAIR_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 if opts.gatk:
     GATK = opts.gatk

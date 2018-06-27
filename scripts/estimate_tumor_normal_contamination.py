@@ -18,6 +18,12 @@ from collections import defaultdict
 import numpy as np
 from math import pow
 
+# These modules should be in a folder under the parent of the folder containing this script
+module_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'modules')
+# If found, add that to the PYTHONPATH, else we depend on user to define PYTHONPATH
+if os.path.isdir(module_dir):
+    sys.path.append(module_dir)
+import MathOperations, ContaminationModel, ContaminationMarker, Genotypes
 
 HOMOZYGOUS_P_VALUE_THRESHOLD = 0.999
 
@@ -35,13 +41,10 @@ parser.add_option('-Q', '--min_mapping_quality', help='MIN MAPPING QUALITY [defa
 
 if opts.conpair_dir:
     CONPAIR_DIR = opts.conpair_dir
-else:
+elif 'CONPAIR_DIR' in os.environ:
     CONPAIR_DIR = os.environ['CONPAIR_DIR']
-
-ContaminationModel = imp.load_source('/ContaminationModel', CONPAIR_DIR + '/modules/ContaminationModel.py')
-ContaminationMarker = imp.load_source('/ContaminationMarker', CONPAIR_DIR + '/modules/ContaminationMarker.py')
-MathOperations = imp.load_source('/MathOperations', CONPAIR_DIR + '/modules/MathOperations.py')
-Genotypes = imp.load_source('/Genotypes', CONPAIR_DIR + '/modules/Genotypes.py')
+else:
+    CONPAIR_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 if not opts.tumor_pileup or not opts.normal_pileup:
     parser.print_help()
