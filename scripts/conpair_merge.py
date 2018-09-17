@@ -101,16 +101,16 @@ def main():
     with open(outcord, 'w') as foutcord:
         # first print column names
         colname = "concordance"
-        for col in tumorID:
+        for col in tumorIDuniq:
             colname = colname + "\t" + col
         foutcord.write(colname + "\n")
         # second print each row
         counter = 0
-        for rowname in normalID:
+        for rowname in normalIDuniq:
             rowstr = rowname
             row = cordtb[counter][:]
             for ele in row:
-                rowstr = rowstr + "\t" + ele
+                rowstr = rowstr + "\t" + str(ele)
             foutcord.write(rowstr + "\n")
             counter += 1
 
