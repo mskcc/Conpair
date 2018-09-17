@@ -3,6 +3,8 @@
 '''
 @Description : This tool helps to merge concordance/contamination results from Conpair into table and generate plots in PDF format
 @Created :  06/13/2018
+@modified : 09/17/2018
+purpose : There is a possibility that one normal sample matches to multiple tumor samples. The code has been modified to fit this situation.
 '''
 
 from __future__ import division
@@ -22,16 +24,21 @@ def main():
     # read pairing file
     normalID = []
     tumorID = []
+    normalIDuniq = []
+    tumorIDuniq = []
     pair = args.inPair
     with open(pair, 'r') as pair:
         for li in pair:
             li = li.strip()
             arr_li = li.split("\t")
-            normalID.append(arr_li[0])
-            tumorID.append(arr_li[1])
-
-    normalIDuniq = list(set(normalID))
-    tumorIDuniq = list(set(tumorID))
+            tmp_normalID = arr_li[0]
+            tmp_tumorID = arr_li[1]
+            if tmp_normalID not in normalID:
+                normalIDuniq.append(tmp_normalID)
+            if tmp_tumorID not in tumorID:
+                tumorIDuniq.append(tmp_tumorID)
+            normalID.append(tmp_normalID)
+            tumorID.append(tmp_tumorID)
 
     # read concordance and contamination files
     fcord = args.cordList
@@ -40,25 +47,23 @@ def main():
     # Concordance file name: s_C_LMMWH4_P001_d.Group20.rg.md.abra.printreads.pileup.s_C_04WTKC_N001_d.Group14.rg.md.abra.printreads.pileup.concordance.txt
     # Extracting information from concordance files and merge all pair-wise (N-T) concordance percentages into one table
     # output table: row - sorted normal sample ids; column - sorted tumor sample ids
-    nlen, tlen = len(normalID), len(tumorID)
-    cordtb = [[-1 for x in range(nlen)] for y in range(tlen)]
+    nlen, tlen = len(normalIDuniq), len(tumorIDuniq)
+    cordtb = [[-1 for y in range(tlen)] for x in range(nlen)]
     for f1 in fcord:
-
         # assign normal and tumor ids and find their index in the 2-dimension list "cordtb"
         idx_normal = -1
         idx_tumor = -1
-        for i in range(len(normalID)):
+        for i in range(len(normalIDuniq)):
             if normalID[i] in f1:
                 idx_normal = i
                 break
-        for j in range(len(tumorID)):
+        for j in range(len(tumorIDuniq)):
             if tumorID[j] in f1:
                 idx_tumor = j
                 break
-        if idx_normal == -1 or -1 == idx_tumor:
-            print "There is an error: Could not find sample IDs for file ",f1
+        if idx_normal == -1 or idx_tumor == -1:
+            print "There is an error: Could not find sample IDs the pairing file ", f1
             sys.exit(1)
-
         # read f1 file to get percentage information
         with open(f1, 'r') as cord:
             for li in cord:
@@ -102,7 +107,7 @@ def main():
         # first print column names
         colname = "concordance"
         for col in tumorIDuniq:
-            colname = colname + "\t" + col
+            colname = colname + "\t" + str(col)
         foutcord.write(colname + "\n")
         # second print each row
         counter = 0
