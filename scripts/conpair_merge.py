@@ -54,15 +54,15 @@ def main():
         idx_normal = -1
         idx_tumor = -1
         for i in range(len(normalIDuniq)):
-            if normalID[i] in f1:
+            if normalIDuniq[i] in f1:
                 idx_normal = i
                 break
         for j in range(len(tumorIDuniq)):
-            if tumorID[j] in f1:
+            if tumorIDuniq[j] in f1:
                 idx_tumor = j
                 break
         if idx_normal == -1 or idx_tumor == -1:
-            print "There is an error: Could not find sample IDs the pairing file ", f1
+            print "There is an error: Could not find sample IDs in the pairing file ", f1
             sys.exit(1)
         # read f1 file to get percentage information
         with open(f1, 'r') as cord:
@@ -173,7 +173,7 @@ def writeConcordRScript(indir, inf, outf):
         rfile.write("cord <- read.delim(incord, header=TRUE, row.names = 1)\n")
         rfile.write("mcord <- melt(as.matrix(cord))\n")
         rfile.write("pdf(file=outcord, width=15, height=15)\n")
-        str_tmp = "ggplot(mcord, aes(Var1, Var2)) + geom_tile(aes(fill=value), colour=\"white\") + scale_fill_gradient(low=\"red\", high=\"green\") + geom_text(aes(label=value), color=\"black\", size=5) + labs(x=\"Normal Sample\", y=\"Tumor Sample\", title=\"Concordance among Smples\", fill=\"Percentage of Concordance\") + theme(axis.text.x=element_text(angle=45, hjust=1), legend.position=\"bottom\", legend.box=\"horizontal\", plot.title=element_text(size=30, face=\"bold\", vjust=4, hjust=0.4), axis.text=element_text(size=14, face=\"bold\", colour=\"black\"), axis.title=element_text(size=20, face=\"bold\", colour=\"black\"), legend.text=element_text(size=14, face=\"bold\", colour=\"black\"), legend.title=element_text(size=20, face=\"bold\", colour=\"black\"),plot.margin=unit(c(2,2,2,2), \"lines\"))"
+        str_tmp = "ggplot(mcord, aes(Var1, Var2)) + geom_tile(aes(fill=value), colour=\"white\") + scale_fill_gradient(low=\"red\", high=\"green\") + geom_text(aes(label=value), color=\"black\", fontface=\"bold\") + labs(x=\"Normal Sample\", y=\"Tumor Sample\", title=\"Concordance among Samples\", fill=\"Percentage of Concordance\") + theme(axis.text.x=element_text(angle=45, hjust=1), legend.position=\"bottom\", legend.box=\"horizontal\", plot.title=element_text(size=30, face=\"bold\", vjust=4, hjust=0.4), axis.text=element_text(size=14, face=\"bold\", colour=\"black\"), axis.title=element_text(size=20, face=\"bold\", colour=\"black\"), legend.text=element_text(size=14, face=\"bold\", colour=\"black\"), legend.title=element_text(size=20, face=\"bold\", colour=\"black\"),plot.margin=unit(c(2,2,2,2), \"lines\"))"
         rfile.write(str_tmp + "\n")
         rfile.write("dev.off()\n")
 
