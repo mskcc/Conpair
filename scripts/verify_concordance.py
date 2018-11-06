@@ -8,6 +8,8 @@
 # cannot be responsible for its use, misuse, or functionality.
 # Version: 0.15
 # Author: Ewa A Bergmann (ewa.a.bergmann@gmail.com)
+# Modified on Nov.05,2018 by Zuojian Tang (MSKCC)
+# Purpose: For T/N samples without any shared markers, The "WARNING" message is still written into "*.concordance.txt" file instead of "sys.exit(0)".
 
 import sys
 import os
@@ -87,12 +89,17 @@ for m in Markers:
     else:
         discordant += 1
 
+# modified on Nov.05,2018 by Zuojian Tang
 if concordant+discordant == 0:
-    print('WARNING: There are no shared markers between the tumor and the normal samples that meet the specified coverage requirements ({0})\nIs the coverage of your samples high enough?\nExiting...'.format(COVERAGE_THRESHOLD))
-    sys.exit(0)
-
-
-if opts.outfile == "-":
+    if opts.outfile == "-":
+        print('WARNING: There are no shared markers between the tumor and the normal samples that meet the specified coverage requirements ({0})\nIs the coverage of your samples high enough?\nExiting...'.format(COVERAGE_THRESHOLD))
+        # sys.exit(0) 
+    else:
+        outfile = open(opts.outfile, 'w')
+        outfile.write("WARNING: There are no shared markers between the tumor and the normal samples that meet the specified coverage requirements " + str(COVERAGE_THRESHOLD) + "\n")
+        outfile.write("Is the coverage of your samples high enough?\n")
+        outfile.close()
+elif opts.outfile == "-":
     print(round(float(concordant)/(concordant+discordant), 3))
     print("Based on " + str(concordant+discordant) + "/" + str(len(Markers)) + " markers (coverage per marker threshold: " + str(COVERAGE_THRESHOLD) + " reads)")
     print("Minimum mappinq quality: " + str(MMQ))
