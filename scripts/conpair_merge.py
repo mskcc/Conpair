@@ -199,7 +199,6 @@ def writeConcordRScript(indir, inf, outf):
         ggplot(mcord, aes(Var1, Var2)) + 
         geom_tile(aes(fill=value), colour="white") + 
         scale_fill_gradient(low="red", high="green", limits=c(0, 100)) + 
-        geom_text(aes(label=value), color="black", size=7) +
         labs(x="\\nNormal Sample\\n", y="Tumor Sample\\n", title="Concordance among Samples") + 
         theme(plot.title=element_text(size=40, face="bold", vjust=4, hjust=0.4, margin=margin(t=10,b=20)), 
             plot.margin=unit(c(2,2,2,2), "lines"), 
