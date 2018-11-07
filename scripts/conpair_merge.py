@@ -6,7 +6,10 @@
 @modified : 09/17/2018
 purpose : There is a possibility that one normal sample matches to multiple tumor samples. The code has been modified to fit this situation.
 @modified : 11/05/2018
-purpose : If it is pooled normal or tumor sample, it will be excluded in *.concordance.txt file and this paired contamination information will be also excluded from *.contamination file
+@purpose : If normal and tumor samples do not have shared markers, there will be "WARNING" message in *.concordance.txt file. This pair will not be reported in summarized pdf file.
+@purpose : If it is either pooled normal or tumor sample, this pair will be reported in summarized pdf file.
+@modified : 11/07/2018
+@purpose : If either normal or tumor has lower coverage, it will have "WARNING" message in *.contamination.txt file. This pair will be reported in summarized pdf file
 '''
 
 from __future__ import division
@@ -157,17 +160,22 @@ def main():
 
             if "pool" in str_normal.lower() or "pool" in str_tumor.lower():
                 continue
-
+            str_out = ""
             with open(f2, 'r') as tami:
                 for li in tami:
                     li = li.strip()
                     arr_li = li.split(" ")
                     pert = arr_li[len(arr_li) - 1]
                     pert = pert.replace("%","")
+                    if li.startswith("WARNING:"):
+                        break
                     if li.startswith("Normal"):
-                        fouttami.write("N" + "\t" + str_normal + "\t" + pert + "\n")
+                        str_out = "N" + "\t" + str_normal + "\t" + pert + "\n"
+                        # fouttami.write("N" + "\t" + str_normal + "\t" + pert + "\n")
                     elif li.startswith("Tumor"):
-                        fouttami.write("T" + "\t" + str_tumor + "\t" + pert + "\n")
+                        str_out = str_out + "T" + "\t" + str_tumor + "\t" + pert + "\n"
+                        # fouttami.write("T" + "\t" + str_tumor + "\t" + pert + "\n")
+                fouttami.write(str_out)
 
     # write and run a R script to generate contamination plot in PDF format
     outtamirdir = os.path.dirname(os.path.realpath(outtamir))

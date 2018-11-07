@@ -8,6 +8,8 @@
 # cannot be responsible for its use, misuse, or functionality.
 # Version: 1.0
 # Author: Ewa A Bergmann (ewa.a.bergmann@gmail.com)
+# Modified on Nov.07,2018 by Zuojian Tang
+# Purpose: If Data (markers) is empty, output warning message and do not do the next step
 
 
 import sys
@@ -128,30 +130,37 @@ for line in file:
     Data.append(marker_data)
     
 file.close()
-D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
-ARGMAX = np.argmax(D)
-cont = checkpoints[ARGMAX]
 
-x1 = max(cont-grid_precision, 0.0)
-x2 = cont
-x3 = min(cont+grid_precision, 1.0)
+# modified on Nov.07,2018 in order to prevent error message when Data is empty.
+if Data:
+    D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
+    ARGMAX = np.argmax(D)
+    cont = checkpoints[ARGMAX]
 
-if x2 == 0.0:
-    x2 += grid_precision/100
-elif x2 == 1.0:
-    x2 -= grid_precision/100
+    x1 = max(cont-grid_precision, 0.0)
+    x2 = cont
+    x3 = min(cont+grid_precision, 1.0)
 
-### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
+    if x2 == 0.0:
+        x2 += grid_precision/100
+    elif x2 == 1.0:
+        x2 -= grid_precision/100
 
-optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
+    ### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
 
-### PRINTING THE NORMAL RESULTS
-    
-if opts.outfile == "-":
-    print("Normal sample contamination level: " + str(round(100.0*optimal_val, 3)) + "%")
+    optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
+
+    ### PRINTING THE NORMAL RESULTS
+
+    if opts.outfile == "-":
+        print("Normal sample contamination level: " + str(round(100.0*optimal_val, 3)) + "%")
+    else:
+        outfile.write("Normal sample contamination level: " + str(round(100.0*optimal_val, 3)) + "%\n")
 else:
-    outfile.write("Normal sample contamination level: " + str(round(100.0*optimal_val, 3)) + "%\n")
-
+    if opts.outfile == "-":
+        print("WARNING: Normal sample doesn't have enough coverage to detect contamination level.")
+    else:
+        outfile.write("WARNING: Normal sample doesn't have enough coverage to detect contamination level.\n")
 
 ### PARSING THE TUMOR PILEUP FILE, CALCULATING THE LIKELIHOOD FUNCTION
 
@@ -200,28 +209,35 @@ for line in file:
     
 file.close()
 
-D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
-ARGMAX = np.argmax(D)
-cont = checkpoints[ARGMAX]
+# modified on Nov.07,2018 in order to prevent error message when Data is empty.
+if Data:
+    D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
+    ARGMAX = np.argmax(D)
+    cont = checkpoints[ARGMAX]
 
-x1 = max(cont-grid_precision, 0.0)
-x2 = cont
-x3 = min(cont+grid_precision, 1.0)
+    x1 = max(cont-grid_precision, 0.0)
+    x2 = cont
+    x3 = min(cont+grid_precision, 1.0)
 
-if x2 == 0.0:
-    x2 += grid_precision/100
-elif x2 == 1.0:
-    x2 -= grid_precision/100
+    if x2 == 0.0:
+        x2 += grid_precision/100
+    elif x2 == 1.0:
+        x2 -= grid_precision/100
 
-### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
+    ### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
 
-optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
+    optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
 
-### PRINTING THE TUMOR RESULTS
-    
-if opts.outfile == "-":
-    print("Tumor sample contamination level: " + str(round(100.0*optimal_val,3)) + "%")
+    ### PRINTING THE TUMOR RESULTS
+
+    if opts.outfile == "-":
+        print("Tumor sample contamination level: " + str(round(100.0*optimal_val,3)) + "%")
+    else:
+        outfile.write("Tumor sample contamination level: " + str(round(100.0*optimal_val,3)) + "%\n")
+        outfile.close()
 else:
-    outfile.write("Tumor sample contamination level: " + str(round(100.0*optimal_val,3)) + "%\n")
-    outfile.close()
-
+    if opts.outfile == "-":
+        print("WARNING: Tumor sample doesn't have enough coverage to detect contamination level.")
+    else:
+        outfile.write("WARNING: Tumor sample doesn't have enough coverage to detect contamination level.\n")
+        outfile.close()
