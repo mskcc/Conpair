@@ -13,6 +13,14 @@
 # Purpose: Will accept list of Tumor-Normal pairs and generate PDF plot
 # Author: Zuojian Tang (tangz@mskcc.org)
 
+# Modified on Dec-10-2018
+# Purpose: If Data (markers) is empty in one sample, it will not be considered for the final "table" and "pdf" files.
+# Author: Zuojian Tang (tangz@mskcc.org)
+
+# Modified on Dec-12-2018
+# Purpose: If there is "pooled" sample in T/N pair, this pair will not be reported in both "table" and "pdf" files.
+# Author: Zuojian Tang (tangz@mskcc.org)
+
 from __future__ import division
 from __future__ import print_function
 
@@ -87,8 +95,12 @@ def main():
         for li in pair:
             li = li.strip()
             arr_li = li.split("\t")
-            normalID.append(arr_li[0])
-            tumorID.append(arr_li[1])
+            str_normal = arr_li[0]
+            str_tumor = arr_li[1]
+            if "pool" in str_normal.lower() or "pool" in str_tumor.lower():
+                continue
+            normalID.append(str_normal)
+            tumorID.append(str_tumor)
 
     # read pileup file lists
     ftpileup = args.t_pileups
@@ -204,26 +216,31 @@ def run_estimate_tumor_normal_contamination(N_pileup, T_pileup, MARKER_FILE, gri
         Data.append(marker_data)
 
     file.close()
-    D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
-    ARGMAX = np.argmax(D)
-    cont = checkpoints[ARGMAX]
+    
+    # modified on Dec-10-2018
+    if Data:
+        D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
+        ARGMAX = np.argmax(D)
+        cont = checkpoints[ARGMAX]
 
-    x1 = max(cont-grid_precision, 0.0)
-    x2 = cont
-    x3 = min(cont+grid_precision, 1.0)
+        x1 = max(cont-grid_precision, 0.0)
+        x2 = cont
+        x3 = min(cont+grid_precision, 1.0)
 
-    if x2 == 0.0:
-        x2 += grid_precision/100
-    elif x2 == 1.0:
-        x2 -= grid_precision/100
+        if x2 == 0.0:
+            x2 += grid_precision/100
+        elif x2 == 1.0:
+            x2 -= grid_precision/100
 
-    ### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
+        ### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
 
-    optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
+        optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
 
-    ### PRINTING THE NORMAL RESULTS
+        ### PRINTING THE NORMAL RESULTS
 
-    str_return = "Normal:" + str(round(100.0*optimal_val, 3))
+        str_return = "Normal:" + str(round(100.0*optimal_val, 3))
+    else:
+        str_return = "WARNING:" + "NA"
 
 
     ### PARSING THE TUMOR PILEUP FILE, CALCULATING THE LIKELIHOOD FUNCTION
@@ -273,26 +290,30 @@ def run_estimate_tumor_normal_contamination(N_pileup, T_pileup, MARKER_FILE, gri
 
     file.close()
 
-    D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
-    ARGMAX = np.argmax(D)
-    cont = checkpoints[ARGMAX]
+    # modified on Dec-10-2018
+    if Data:
+        D = ContaminationModel.calculate_contamination_likelihood(checkpoints, Data, Scores)
+        ARGMAX = np.argmax(D)
+        cont = checkpoints[ARGMAX]
 
-    x1 = max(cont-grid_precision, 0.0)
-    x2 = cont
-    x3 = min(cont+grid_precision, 1.0)
+        x1 = max(cont-grid_precision, 0.0)
+        x2 = cont
+        x3 = min(cont+grid_precision, 1.0)
 
-    if x2 == 0.0:
-        x2 += grid_precision/100
-    elif x2 == 1.0:
-        x2 -= grid_precision/100
+        if x2 == 0.0:
+            x2 += grid_precision/100
+        elif x2 == 1.0:
+            x2 -= grid_precision/100
 
-    ### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
+        ### SEARCHING THE SPACE AROUND ARGMAX - Brent's algorithm
 
-    optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
+        optimal_val = ContaminationModel.apply_brents_algorithm(Data, Scores, x1, x2, x3)
 
-    ### PRINTING THE TUMOR RESULTS
+        ### PRINTING THE TUMOR RESULTS
 
-    str_return = str_return + "\t"+ "Tumor:" + str(round(100.0*optimal_val, 3))
+        str_return = str_return + "\t"+ "Tumor:" + str(round(100.0*optimal_val, 3))
+    else:
+        str_return = str_return + "\t"+ "WARNING:" + "NA"
 
     return str_return
 

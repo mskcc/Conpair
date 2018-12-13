@@ -13,6 +13,15 @@
 # Purpose: Will accept list of Tumor-Normal pairs and generate PDF plot
 # Author: Zuojian Tang (tangz@mskcc.org)
 
+# Modified on Dec-10-2018
+# Purpose: For T/N samples without any shared markers, use "NA" value for R plot instead of "sys.exit(0)".
+# Author: Zuojian Tang (tangz@mskcc.org)
+
+# Modified on Dec-12-2018
+# Purpose: If it is "pooled" sample, this sample will not be considered.
+# Purpose: Removed "geom_text" in R in order to remove digital number in each cell of "pdf" file.
+# Author: Zuojian Tang (tangz@mskcc.org)
+
 from __future__ import division
 from __future__ import print_function
 
@@ -34,6 +43,8 @@ from ContaminationModel import *
 from ContaminationMarker import *
 
 def main():
+    print_thresh = 20
+
     parser = argparse.ArgumentParser(prog='verify_concordances.py',
                                      description='Program to verify tumor-normal sample concordances and generate summary plot in PDF format.',
                                      usage='%(prog)s [options]')
@@ -110,9 +121,9 @@ def main():
             arr_li = li.split("\t")
             tmp_normalID = arr_li[0]
             tmp_tumorID = arr_li[1]
-            if tmp_normalID not in normalID:
+            if "pool" not in tmp_normalID.lower() and tmp_normalID not in normalID:
                 normalIDuniq.append(tmp_normalID)
-            if tmp_tumorID not in tumorID:
+            if "pool" not in tmp_tumorID.lower() and tmp_tumorID not in tumorID:
                 tumorIDuniq.append(tmp_tumorID)
             normalID.append(tmp_normalID)
             tumorID.append(tmp_tumorID)
@@ -150,7 +161,8 @@ def main():
                 print ("There is an error: Could not find pileup file. (", nid, tid, ")")
                 sys.exit(1)
             count += 1
-            print(count,"/",total)
+            if count % print_thresh == 0:
+                print(count, "out of", total, "have finished.")
             str_return = run_verify_concordance(N_pileup, T_pileup, MARKER_FILE, MMQ, MBQ, COVERAGE_THRESHOLD, AA_BB_only)
             arr_str_return = str_return.split("\t")
             str_cord = arr_str_return[0]
@@ -207,12 +219,15 @@ def run_verify_concordance (N_pileup, T_pileup, MARKER_FILE, MMQ, MBQ, COVERAGE_
         else:
             discordant += 1
 
+# Modified on Dec-10-2018 by Zuojian Tang
     if concordant+discordant == 0:
-        print('WARNING: There are no shared markers between the tumor and the normal samples that meet the specified coverage requirements ({0})\nIs the coverage of your samples high enough?\nExiting...'.format(COVERAGE_THRESHOLD))
-        sys.exit(0)
-
-    str_return = "Concordance:"+ str(round(100.0*float(concordant)/(concordant+discordant), 2)) + "%"
-    str_return = str_return + "\t" + \
+        # print('WARNING: There are no shared markers between the tumor and the normal samples that meet the specified coverage requirements ({0})\nIs the coverage of your samples high enough?\nExiting...'.format(COVERAGE_THRESHOLD))
+        # sys.exit(0)
+        str_return = "Concordance:" + "NA"
+        str_return = str_return + "\t" + "NA"
+    else: 
+        str_return = "Concordance:"+ str(round(100.0*float(concordant)/(concordant+discordant), 2)) + "%"
+        str_return = str_return + "\t" + \
                  "Based on " + str(concordant+discordant) + "/" + str(len(Markers)) + " markers (coverage per marker threshold:" + str(COVERAGE_THRESHOLD) + " reads)" + "\t" + \
                  "Minimum mappinq quality:" + str(MMQ) + "\t" + \
                  "Minimum base quality:" + str(MBQ)
@@ -233,8 +248,7 @@ def writeConcordRScript(indir, inf, outf):
         pdf(file=outcord, width=20, height=20)
         ggplot(mcord, aes(Var1, Var2)) + 
         geom_tile(aes(fill=value), colour="white") + 
-        scale_fill_gradient(low="red", high="green", limits=c(0, 100)) + 
-        geom_text(aes(label=value), color="black", size=7) +
+        scale_fill_gradient(low="red", high="green", limits=c(0, 100)) +
         labs(x="\\nNormal Sample\\n", y="Tumor Sample\\n", title="Concordance among Samples") + 
         theme(plot.title=element_text(size=40, face="bold", vjust=4, hjust=0.4, margin=margin(t=10,b=20)), 
             plot.margin=unit(c(2,2,2,2), "lines"), 
