@@ -5,10 +5,19 @@
 @Created :  06/13/2018
 @modified : 09/17/2018
 purpose : There is a possibility that one normal sample matches to multiple tumor samples. The code has been modified to fit this situation.
+@modified : 11/05/2018
+@purpose : If normal and tumor samples do not have shared markers, there will be "WARNING" message in *.concordance.txt file. This pair will not be reported in summarized pdf file.
+@purpose : If it is either pooled normal or tumor sample, this pair will be reported in summarized pdf file.
+@modified : 11/07/2018
+@purpose : If either normal or tumor has lower coverage, it will have "WARNING" message in *.contamination.txt file. This pair will be reported in summarized pdf file
+@modified : 12/31/2018
+@purpose : If there is no considered normal/tumor samples, it will not output any summary results. This situation could happen when all normal samples are pooled normal samples.
+@purpose : If it is empty table, R codes will do nothing. In this case, there is no pdf files generated. This situtation could happen when "WARNING" message is shown in either *.concordance or *.contamination file.
 '''
 
 from __future__ import division
 import argparse, time, os, sys, logging, re, csv, glob, subprocess
+import inspect
 
 def main():
     parser = argparse.ArgumentParser(prog='conpair_merge.py', description='This tool helps to merge concordance/contamination results into table and generate plots in PDF format.', usage='%(prog)s [options]')
@@ -33,9 +42,9 @@ def main():
             arr_li = li.split("\t")
             tmp_normalID = arr_li[0]
             tmp_tumorID = arr_li[1]
-            if tmp_normalID not in normalID:
+            if "pool" not in tmp_normalID.lower() and tmp_normalID not in normalID:
                 normalIDuniq.append(tmp_normalID)
-            if tmp_tumorID not in tumorID:
+            if "pool" not in tmp_tumorID.lower() and tmp_tumorID not in tumorID:
                 tumorIDuniq.append(tmp_tumorID)
             normalID.append(tmp_normalID)
             tumorID.append(tmp_tumorID)
@@ -48,6 +57,12 @@ def main():
     # Extracting information from concordance files and merge all pair-wise (N-T) concordance percentages into one table
     # output table: row - sorted normal sample ids; column - sorted tumor sample ids
     nlen, tlen = len(normalIDuniq), len(tumorIDuniq)
+
+    # modified on 12/31/2018
+    if nlen == 0 or tlen == 0:
+        print "ConPair message: No summary pdf files are generated since there are no normal/tumor samples."
+        sys.exit(0)
+
     cordtb = [[-1 for y in range(tlen)] for x in range(nlen)]
     for f1 in fcord:
         # assign normal and tumor ids and find their index in the 2-dimension list "cordtb"
@@ -62,18 +77,25 @@ def main():
                 idx_tumor = j
                 break
         if idx_normal == -1 or idx_tumor == -1:
-            print "There is an error: Could not find sample IDs in the pairing file ", f1
-            sys.exit(1)
+            if "pool" not in f1.lower():
+                print "There is an error: Could not find sample IDs in the pairing file ", f1
+                sys.exit(1)
+            else:
+                continue
         # read f1 file to get percentage information
         with open(f1, 'r') as cord:
             for li in cord:
                 li = li.strip()
-                if li.startswith("Concordance:"):
+                if li.startswith("WARNING:"):
+                    cordtb[idx_normal][idx_tumor] = "NA"
+                    break
+                elif li.startswith("Concordance:"):
                     arr_li = li.split(" ")
                     pert = arr_li[len(arr_li) - 1]
                     pert = pert.replace("%","")
                     # assign the value of this concordance
                     cordtb[idx_normal][idx_tumor] = pert
+                    break
 
     # get prefix name of output files
     if args.outPre:
@@ -145,16 +167,24 @@ def main():
             elif tami2 in tumorID:
                 str_tumor = tami2
 
+            if "pool" in str_normal.lower() or "pool" in str_tumor.lower():
+                continue
+            str_out = ""
             with open(f2, 'r') as tami:
                 for li in tami:
                     li = li.strip()
                     arr_li = li.split(" ")
                     pert = arr_li[len(arr_li) - 1]
                     pert = pert.replace("%","")
+                    if li.startswith("WARNING:"):
+                        break
                     if li.startswith("Normal"):
-                        fouttami.write("N" + "\t" + str_normal + "\t" + pert + "\n")
+                        str_out = "N" + "\t" + str_normal + "\t" + pert + "\n"
+                        # fouttami.write("N" + "\t" + str_normal + "\t" + pert + "\n")
                     elif li.startswith("Tumor"):
-                        fouttami.write("T" + "\t" + str_tumor + "\t" + pert + "\n")
+                        str_out = str_out + "T" + "\t" + str_tumor + "\t" + pert + "\n"
+                        # fouttami.write("T" + "\t" + str_tumor + "\t" + pert + "\n")
+                fouttami.write(str_out)
 
     # write and run a R script to generate contamination plot in PDF format
     outtamirdir = os.path.dirname(os.path.realpath(outtamir))
@@ -163,34 +193,95 @@ def main():
     execute_shell(cmd2)
 
 def writeConcordRScript(indir, inf, outf):
+
+    outpdf = outf.replace(".R", ".pdf")
     with open(outf, 'w') as rfile:
-        rfile.write("library(reshape2)\n")
-        rfile.write("library(ggplot2)\n")
-        rfile.write("setwd(\"" + indir + "\")\n")
-        rfile.write("incord <- \"" + inf + "\"\n")
-        outpdf=outf.replace(".R", ".pdf")
-        rfile.write("outcord <- \"" + outpdf + "\"\n")
-        rfile.write("cord <- read.delim(incord, header=TRUE, row.names = 1)\n")
-        rfile.write("mcord <- melt(as.matrix(cord))\n")
-        rfile.write("pdf(file=outcord, width=15, height=15)\n")
-        str_tmp = "ggplot(mcord, aes(Var1, Var2)) + geom_tile(aes(fill=value), colour=\"white\") + scale_fill_gradient(low=\"red\", high=\"green\") + geom_text(aes(label=value), color=\"black\", fontface=\"bold\") + labs(x=\"Normal Sample\", y=\"Tumor Sample\", title=\"Concordance among Samples\", fill=\"Percentage of Concordance\") + theme(axis.text.x=element_text(angle=45, hjust=1), legend.position=\"bottom\", legend.box=\"horizontal\", plot.title=element_text(size=30, face=\"bold\", vjust=4, hjust=0.4), axis.text=element_text(size=14, face=\"bold\", colour=\"black\"), axis.title=element_text(size=20, face=\"bold\", colour=\"black\"), legend.text=element_text(size=14, face=\"bold\", colour=\"black\"), legend.title=element_text(size=20, face=\"bold\", colour=\"black\"),plot.margin=unit(c(2,2,2,2), \"lines\"))"
-        rfile.write(str_tmp + "\n")
-        rfile.write("dev.off()\n")
+        strout = """
+        library(reshape2)
+        library(ggplot2)
+        setwd("%s")
+        incord <- "%s"
+        outcord <- "%s"
+        cord <- read.delim(incord, header=TRUE, row.names = 1)
+        mcord <- melt(as.matrix(cord))
+        numnonna <- sum(!is.na(mcord$value))
+        if(numnonna != 0){
+        pdf(file=outcord, width=20, height=20)
+        print(ggplot(mcord, aes(Var1, Var2)) + 
+        geom_tile(aes(fill=value), colour="white") + 
+        scale_fill_gradient(low="red", high="green", limits=c(0, 100)) + 
+        labs(x="\\nNormal Sample\\n", y="Tumor Sample\\n", title="Concordance among Samples") + 
+        theme(plot.title=element_text(size=40, face="bold", vjust=4, hjust=0.4, margin=margin(t=10,b=20)), 
+            plot.margin=unit(c(2,2,2,2), "lines"), 
+            axis.title=element_text(size=28, face="bold", colour="black"), 
+            axis.text=element_text(size=20, face="bold", colour="black"), 
+            axis.text.x=element_text(angle=45, hjust=1, margin=margin(t=20,r=0,b=0,l=0)), 
+            axis.text.y=element_text(margin=margin(t=0,r=20,b=0,l=0)), 
+            legend.position="bottom", 
+            legend.box="horizontal", 
+            legend.spacing=unit(1,"cm"), 
+            legend.text=element_text(size=24, face="bold", colour="black", margin=margin(t=10)),
+            legend.title=element_text(size=28, face="bold", colour="black")) + 
+        guides(fill=guide_colorbar(title="Percentage of Concordance",
+            label.position="bottom", 
+            title.position="left", 
+            title.vjust=1, 
+            title.hjust=500, 
+            label=TRUE, 
+            draw.ulim=TRUE, 
+            draw.llim=TRUE, 
+            frame.colour="black", 
+            ticks=TRUE, 
+            barwidth=15, 
+            barheight=1.5, 
+            direction='horizontal')))
+        dev.off()
+        }
+        """
+        strout = inspect.cleandoc(strout)
+        strout = strout % (indir, inf, outpdf)
+        rfile.write(strout)
 
 def writeContamRScript(indir, inf, outf):
+
+    outpdf = outf.replace(".R", ".pdf")
     with open(outf, 'w') as rfile:
-        rfile.write("library(reshape2)\n")
-        rfile.write("library(ggplot2)\n")
-        rfile.write("setwd(\"" + indir + "\")\n")
-        rfile.write("intami <- \"" + inf + "\"\n")
-        outpdf=outf.replace(".R", ".pdf")
-        rfile.write("outtami <- \"" + outpdf + "\"\n")
-        rfile.write("tami <- read.delim(intami, header=TRUE)\n")
-        rfile.write("tami$Sample_ID <- factor(tami$Sample_ID, levels=tami$Sample_ID[order(tami$Sample_Type, -tami$Contamination)])\n")
-        rfile.write("pdf(file=outtami, width=20, height=15)\n")
-        str_tmp = "ggplot(tami, aes(x=Sample_ID, y=Contamination, fill=factor(Sample_Type))) + geom_bar(stat=\"identity\") + geom_hline(yintercept=2) + annotate(\"text\", min(tami$Contamination), 2, vjust=-1, hjust=-0.2, label=\"Soft Cutoff\") + geom_hline(yintercept=5) + annotate(\"text\", min(tami$Contamination), 5, vjust=-1, hjust=-0.2, label=\"Cutoff\") + labs(x=\"Samples\",y=\"Contamination(%)\",title=\"Contamination of Samples\",fill=\"Normal/Tumor\") + theme(axis.text.x=element_text(angle=45, hjust=1), legend.position=\"bottom\",legend.box=\"horizontal\", plot.title=element_text(size=30,face=\"bold\",vjust=4, hjust=0.5),axis.text=element_text(size=14,face=\"bold\",colour=\"black\"),axis.title=element_text(size=20,face=\"bold\",colour=\"black\"),legend.text=element_text(size=14,face=\"bold\",colour=\"black\"),legend.title=element_text(size=20,face=\"bold\",colour=\"black\"), plot.margin=unit(c(2,2,2,3), \"lines\")) + coord_cartesian(ylim = c(0, 100))"
-        rfile.write(str_tmp + "\n")
-        rfile.write("dev.off()\n")
+        strout = """
+        library(reshape2)
+        library(ggplot2)
+        setwd("%s")
+        intami <- "%s"
+        outtami <- "%s"
+        tami <- read.delim(intami, header=TRUE)
+        tami <- unique(tami)
+        if(nrow(tami) != 0){
+        tami$Sample_ID <- factor(tami$Sample_ID, levels=tami$Sample_ID[order(tami$Sample_Type, -tami$Contamination)])
+        pdf(file=outtami, width=20, height=20)
+        print(ggplot(tami, aes(x=Sample_ID, y=Contamination, fill=factor(Sample_Type))) + 
+        geom_bar(stat="identity") +
+        geom_hline(yintercept=2) + annotate("text", min(tami$Contamination), 2, vjust=-1, hjust=-0.2, label="Soft Cutoff") +
+        geom_hline(yintercept=5) + annotate("text", min(tami$Contamination), 5, vjust=-1, hjust=-0.2, label="Cutoff") +
+        labs(x="Samples",y="Contamination(%%)",title="Contamination of Samples", fill="Tumor/Normal ") +
+        theme(plot.title=element_text(size=40,face="bold",vjust=4, hjust=0.5, margin=margin(t=10,b=20)), 
+            plot.margin=unit(c(2,2,2,3), "lines"), 
+            axis.title=element_text(size=28,face="bold",colour="black"), 
+            axis.text=element_text(size=20,face="bold",colour="black"), 
+            axis.text.x=element_text(angle=45, hjust=1, margin=margin(t=20,r=0,b=0,l=0)), 
+            axis.text.y=element_text(margin=margin(t=0,r=20,b=0,l=0)), 
+            legend.position="bottom", 
+            legend.box="horizontal", 
+            legend.spacing=unit(1,"cm"), 
+            legend.text=element_text(size=24,face="bold",colour="black", margin=margin(r=50,unit="pt")),
+            legend.title=element_text(size=28,face="bold",colour="black"),
+            legend.key.height=unit(2,"line"), 
+            legend.key.width=unit(2,"line")) +
+        coord_cartesian(ylim = c(0, 100)))
+        dev.off()
+        }
+        """
+        strout = inspect.cleandoc(strout)
+        strout = strout % (indir, inf, outpdf)
+        rfile.write(strout)
 
 def execute_shell(cmd):
     try:
