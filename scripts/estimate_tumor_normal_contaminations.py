@@ -21,6 +21,11 @@
 # Purpose: If there is "pooled" sample in T/N pair, this pair will not be reported in both "table" and "pdf" files.
 # Author: Zuojian Tang (tangz@mskcc.org)
 
+# Modified on Jan-3-2019
+# Purpose: If there is no considered normal/tumor samples, it will not output any summary results. This situation could happen when all normal samples are pooled normal samples.
+# Purpose: If it is empty table, R codes will do nothing. In this case, there is no pdf files generated. This situtation could happen when "WARNING" message is shown in either *.concordance or *.contamination file.
+# Author: Zuojian Tang (tangz@mskcc.org)
+
 from __future__ import division
 from __future__ import print_function
 
@@ -329,9 +334,10 @@ def writeContamRScript(indir, inf, outf):
         outtami <- "%s"
         tami <- read.delim(intami, header=TRUE)
         tami <- unique(tami)
+        if(nrow(tami) != 0){
         tami$Sample_ID <- factor(tami$Sample_ID, levels=tami$Sample_ID[order(tami$Sample_Type, -tami$Contamination)])
         pdf(file=outtami, width=20, height=20)
-        ggplot(tami, aes(x=Sample_ID, y=Contamination, fill=factor(Sample_Type))) + 
+        print(ggplot(tami, aes(x=Sample_ID, y=Contamination, fill=factor(Sample_Type))) + 
         geom_bar(stat="identity") +
         geom_hline(yintercept=2) + annotate("text", min(tami$Contamination), 2, vjust=-1, hjust=-0.2, label="Soft Cutoff") +
         geom_hline(yintercept=5) + annotate("text", min(tami$Contamination), 5, vjust=-1, hjust=-0.2, label="Cutoff") +
@@ -349,8 +355,9 @@ def writeContamRScript(indir, inf, outf):
             legend.title=element_text(size=28,face="bold",colour="black"),
             legend.key.height=unit(2,"line"), 
             legend.key.width=unit(2,"line")) +
-        coord_cartesian(ylim = c(0, 100))
+        coord_cartesian(ylim = c(0, 100)))
         dev.off()
+        }
         """
         strout = inspect.cleandoc(strout)
         strout = strout % (indir, inf, outpdf)

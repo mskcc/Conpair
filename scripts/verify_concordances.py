@@ -22,6 +22,11 @@
 # Purpose: Removed "geom_text" in R in order to remove digital number in each cell of "pdf" file.
 # Author: Zuojian Tang (tangz@mskcc.org)
 
+# Modified on Jan-3-2019
+# Purpose: If there is no considered normal/tumor samples, it will not output any summary results. This situation could happen when all normal samples are pooled normal samples.
+# Purpose: If it is empty table, R codes will do nothing. In this case, there is no pdf files generated. This situtation could happen when "WARNING" message is shown in either *.concordance or *.contamination file.
+# Author: Zuojian Tang (tangz@mskcc.org)
+
 from __future__ import division
 from __future__ import print_function
 
@@ -134,6 +139,12 @@ def main():
 
     # run run_verify_concordance for each pair of T/N pair
     nlen, tlen = len(normalIDuniq), len(tumorIDuniq)
+
+    # modified on 12/31/2018
+    if nlen == 0 or tlen == 0:
+        print("ConPair message: No summary pdf files are generated since there are no normal/tumor samples.")
+        sys.exit(0)
+
     total = nlen*tlen
     print(nlen, "vs", tlen, "and total=", total)
     count = 0
@@ -245,8 +256,10 @@ def writeConcordRScript(indir, inf, outf):
         outcord <- "%s"
         cord <- read.delim(incord, header=TRUE, row.names = 1)
         mcord <- melt(as.matrix(cord))
+        numnonna <- sum(!is.na(mcord$value))
+        if(numnonna != 0){
         pdf(file=outcord, width=20, height=20)
-        ggplot(mcord, aes(Var1, Var2)) + 
+        print(ggplot(mcord, aes(Var1, Var2)) + 
         geom_tile(aes(fill=value), colour="white") + 
         scale_fill_gradient(low="red", high="green", limits=c(0, 100)) +
         labs(x="\\nNormal Sample\\n", y="Tumor Sample\\n", title="Concordance among Samples") + 
@@ -273,8 +286,9 @@ def writeConcordRScript(indir, inf, outf):
             ticks=TRUE, 
             barwidth=15, 
             barheight=1.5, 
-            direction='horizontal'))
+            direction='horizontal')))
         dev.off()
+        }
         """
         strout = inspect.cleandoc(strout)
         strout = strout % (indir, inf, outpdf)
