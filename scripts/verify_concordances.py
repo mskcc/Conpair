@@ -27,6 +27,12 @@
 # Purpose: If it is empty table, R codes will do nothing. In this case, there is no pdf files generated. This situtation could happen when "WARNING" message is shown in either *.concordance or *.contamination file.
 # Author: Zuojian Tang (tangz@mskcc.org)
 
+# Modified on Mar-13-2019
+# Purpose: If one sample ID in pairing file is the substring of the other sample ID, this will cause program match ID incorrectly. We need to search "sample-id." instead of "sample-id"
+# Pre-requision: For each pileup file, its name has to have "." following with sample ID.
+# For example: Sample ID: MSKLCH32_T; Two pileup files are: "MSKLCH32_T.Group4.rg.md.abra.printreads.pileup" and "MSKLCH32_T2.Group5.rg.md.abra.printreads.pileup"
+# Author: Zuojian Tang (tangz@mskcc.org)
+
 from __future__ import division
 from __future__ import print_function
 
@@ -155,7 +161,7 @@ def main():
         # search for normal pileup file
         for npileup in fnpileup:
             npath, nname = os.path.split(npileup)
-            if nname.startswith(nid):
+            if nid + '.' in nname:
                 N_pileup = npileup
                 break
         # for each tumor pileup file, do concordance
@@ -165,7 +171,7 @@ def main():
             # search for tumor pileup file
             for tpileup in ftpileup:
                 tpath, tname = os.path.split(tpileup)
-                if tname.startswith(tid):
+                if tid + '.' in tname:
                     T_pileup = tpileup
                     break
             if N_pileup == "" or T_pileup == "":
