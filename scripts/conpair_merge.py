@@ -4,7 +4,7 @@
 @Description : This tool helps to merge concordance/contamination results from Conpair into table and generate plots in PDF format
 @Created :  06/13/2018
 @modified : 09/17/2018
-purpose : There is a possibility that one normal sample matches to multiple tumor samples. The code has been modified to fit this situation.
+@purpose : There is a possibility that one normal sample matches to multiple tumor samples. The code has been modified to fit this situation.
 @modified : 11/05/2018
 @purpose : If normal and tumor samples do not have shared markers, there will be "WARNING" message in *.concordance.txt file. This pair will not be reported in summarized pdf file.
 @purpose : If it is either pooled normal or tumor sample, this pair will be reported in summarized pdf file.
@@ -14,7 +14,10 @@ purpose : There is a possibility that one normal sample matches to multiple tumo
 @purpose : If there is no considered normal/tumor samples, it will not output any summary results. This situation could happen when all normal samples are pooled normal samples.
 @purpose : If it is empty table, R codes will do nothing. In this case, there is no pdf files generated. This situtation could happen when "WARNING" message is shown in either *.concordance or *.contamination file.
 @modified : 1/21/2019
-@purpose: When there is no output from ConPair, We still need to output fake *_concordance.R[txt][pdf] and *_contamination.R[txt][pdf] files since roslin-variants version 2.4.1 CWL glob these files.
+@purpose : When there is no output from ConPair, We still need to output fake *_concordance.R[txt][pdf] and *_contamination.R[txt][pdf] files since roslin-variants version 2.4.1 CWL glob these files.
+@modified : 3/13/2019
+@purpose : To solve the issue that one sample ID in pairing file is the substring of the other sample ID, the search key "sample-id." is required for searching its pileup file (instead of "sample-id").
+@pre-requisition : For each pileup file, its name should have "sample-id" followed by "." format (i.e. Sample ID: MSKLCH32_T; Pileup file: "MSKLCH32_T.Group4.rg.md.abra.printreads.pileup")
 '''
 
 from __future__ import division
@@ -110,11 +113,11 @@ def main():
         idx_normal = -1
         idx_tumor = -1
         for i in range(len(normalIDuniq)):
-            if normalIDuniq[i] in f1:
+            if normalIDuniq[i] + '.' in f1:
                 idx_normal = i
                 break
         for j in range(len(tumorIDuniq)):
-            if tumorIDuniq[j] in f1:
+            if tumorIDuniq[j] + '.' in f1:
                 idx_tumor = j
                 break
         if idx_normal == -1 or idx_tumor == -1:
