@@ -25,7 +25,7 @@ parser.add_option('-R', '--reference', help='REFERENCE GENOME [GRCh37 by default
 parser.add_option('-M', '--markers', help='MARKER FILE [GRCh37-default]', action='store')
 parser.add_option('-G', '--gatk', help='GATK JAR [$GATK by default]', action='store')
 parser.add_option('-J', '--java', help='PATH to JAVA [java by default]', default='java', action='store')
-parser.add_option('-t', '--temp_dir_java', help='temporary directory to set -Djava.io.tmpdir', action='store')
+parser.add_option('-t', '--temp_dir_java', help='temporary directory to set -Djava.io.tmpdir', default='/scratch', action='store')
 parser.add_option('-m', '--xmx_java', help='Xmx java memory setting [default: 12g]', default='12g', action='store')
 parser.add_option('--remove_chr_prefix', help='REMOVE CHR PREFIX FROM THE CHROMOSOME COLUMN IN THE OUTPUT FILE [false by default]', default=False, action='store_true')
 

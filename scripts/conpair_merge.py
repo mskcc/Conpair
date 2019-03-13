@@ -13,6 +13,8 @@ purpose : There is a possibility that one normal sample matches to multiple tumo
 @modified : 12/31/2018
 @purpose : If there is no considered normal/tumor samples, it will not output any summary results. This situation could happen when all normal samples are pooled normal samples.
 @purpose : If it is empty table, R codes will do nothing. In this case, there is no pdf files generated. This situtation could happen when "WARNING" message is shown in either *.concordance or *.contamination file.
+@modified : 1/21/2019
+@purpose: When there is no output from ConPair, We still need to output fake *_concordance.R[txt][pdf] and *_contamination.R[txt][pdf] files since roslin-variants version 2.4.1 CWL glob these files.
 '''
 
 from __future__ import division
@@ -29,6 +31,33 @@ def main():
     parser.add_argument("-o", "--output", action="store", dest="outDir", required=False, type=str, help="Output directory that contains summarized tables and plots")
 
     args = parser.parse_args()
+
+    # get prefix name of output files
+    if args.outPre:
+        prefix = args.outPre
+        # get output directory
+        if args.outDir:
+            outcord = args.outDir + "/" + prefix + "_concordance.txt"
+            outcordr = args.outDir + "/" + prefix + "_concordance.R"
+            outtami = args.outDir + "/" + prefix + "_contamination.txt"
+            outtamir = args.outDir + "/" + prefix + "_contamination.R"
+        else:
+            outcord = prefix + "_concordance.txt"
+            outcordr = prefix + "_concordance.R"
+            outtami = prefix + "_contamination.txt"
+            outtamir = prefix + "_contamination.R"
+    else:
+        # get output directory
+        if args.outDir:
+            outcord = args.outDir + "/" + "concordance.txt"
+            outcordr = args.outDir + "/" + "concordance.R"
+            outtami = args.outDir + "/" + "contamination.txt"
+            outtamir = args.outDir + "/" + "contamination.R"
+        else:
+            outcord = "concordance.txt"
+            outcordr = "concordance.R"
+            outtami = "contamination.txt"
+            outtamir = "contamination.R"
 
     # read pairing file
     normalID = []
@@ -60,6 +89,18 @@ def main():
 
     # modified on 12/31/2018
     if nlen == 0 or tlen == 0:
+        with open(outcord, 'w') as foutcord:
+            foutcord.write("ConPair message: No summary pdf files are generated since there are no normal/tumor samples.")
+        with open(outtami, 'w') as fouttami:
+            fouttami.write("ConPair message: No summary pdf files are generated since there are no normal/tumor samples.")
+        outcordrdir = os.path.dirname(os.path.realpath(outcordr))
+        createFakePDFFile(outcordrdir, outcordr)
+        cmdcord = ["Rscript", outcordr]
+        execute_shell(cmdcord)
+        outtamirdir = os.path.dirname(os.path.realpath(outtamir))
+        createFakePDFFile(outtamirdir, outtamir)
+        cmdtami = ["Rscript", outtamir]
+        execute_shell(cmdtami)
         print "ConPair message: No summary pdf files are generated since there are no normal/tumor samples."
         sys.exit(0)
 
@@ -96,33 +137,6 @@ def main():
                     # assign the value of this concordance
                     cordtb[idx_normal][idx_tumor] = pert
                     break
-
-    # get prefix name of output files
-    if args.outPre:
-        prefix = args.outPre
-        # get output directory
-        if args.outDir:
-            outcord = args.outDir + "/" + prefix + "_concordance.txt"
-            outcordr = args.outDir + "/" + prefix + "_concordance.R"
-            outtami = args.outDir + "/" + prefix + "_contamination.txt"
-            outtamir = args.outDir + "/" + prefix + "_contamination.R"
-        else:
-            outcord = prefix + "_concordance.txt"
-            outcordr = prefix + "_concordance.R"
-            outtami = prefix + "_contamination.txt"
-            outtamir = prefix + "_contamination.R"
-    else:
-        # get output directory
-        if args.outDir:
-            outcord = args.outDir + "/" + "concordance.txt"
-            outcordr = args.outDir + "/" + "concordance.R"
-            outtami = args.outDir + "/" + "contamination.txt"
-            outtamir = args.outDir + "/" + "contamination.R"
-        else:
-            outcord = "concordance.txt"
-            outcordr = "concordance.R"
-            outtami = "contamination.txt"
-            outtamir = "contamination.R"
     
     # print concordance matrix (row: normal sample ID; column: tumor sample ID; each cell: percentage of concordance between two N-T samples)
     with open(outcord, 'w') as foutcord:
@@ -192,6 +206,25 @@ def main():
     cmd2 = ["Rscript", outtamir]
     execute_shell(cmd2)
 
+def createFakePDFFile(indir, outf):
+    outpdf = outf.replace(".R", ".pdf")
+    with open(outf, 'w') as rfile:
+        strout = """
+        library(ggplot2)
+        setwd("%s")
+        out <- "%s"
+        pdf(file=out, width=20, height=20)
+        text=paste("ConPair message: \nNo summary pdf files are generated since there are no normal/tumor samples.")
+        ggplot() + 
+        annotate("text", x=0, y=0, size=10, label=text) + 
+        theme_bw() + 
+        theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank())
+        dev.off()
+        """
+        strout = inspect.cleandoc(strout)
+        strout = strout % (indir, outpdf)
+        rfile.write(strout)
+
 def writeConcordRScript(indir, inf, outf):
 
     outpdf = outf.replace(".R", ".pdf")
@@ -236,6 +269,14 @@ def writeConcordRScript(indir, inf, outf):
             barheight=1.5, 
             direction='horizontal')))
         dev.off()
+        } else {
+        pdf(file=outcord, width=20, height=20)
+        text=paste("ConPair message: \nNo summary pdf files are generated since there are no normal/tumor samples.")
+        print(ggplot() + 
+        annotate("text", x=0, y=0, size=10, label=text) + 
+        theme_bw() + 
+        theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()))
+        dev.off()
         }
         """
         strout = inspect.cleandoc(strout)
@@ -276,6 +317,14 @@ def writeContamRScript(indir, inf, outf):
             legend.key.height=unit(2,"line"), 
             legend.key.width=unit(2,"line")) +
         coord_cartesian(ylim = c(0, 100)))
+        dev.off()
+        } else {
+        pdf(file=outtami, width=20, height=20)
+        text=paste("ConPair message: \nNo summary pdf files are generated since there are no normal/tumor samples.")
+        print(ggplot() + 
+        annotate("text", x=0, y=0, size=10, label=text) + 
+        theme_bw() + 
+        theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()))
         dev.off()
         }
         """
