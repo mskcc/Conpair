@@ -26,7 +26,7 @@ Below is a quick guide to get started, but please use `--help` on each script to
 
 To generate readcounts supporting ref/alt alleles at known germline sites (GATK required):
 ```
-python scripts/run_gatk_pileup_for_sample.py -B TUMOR.bam -O TUMOR.pileup -R /path/to/reference.fa -G /path/to/gatk.jar -M data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.txt
+python scripts/run_gatk_pileup_for_sample.py -B TUMOR.bam -O TUMOR.pileup -R /path/to/reference.fa -G /path/to/gatk.jar -M data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.bed
 ```
 
 To verify concordance between one or more pairs of tumor/normal samples, and generate a PDF summary:
